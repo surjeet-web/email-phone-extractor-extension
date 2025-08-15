@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test Page 2</title>
+</head>
+<body>
+    <h1>Debug Test Page 2</h1>
+    
+    <div>
+        <h2>More Contact Information</h2>
+        <ul>
+            <li>Email: page2@example.com</li>
+            <li>Email: second@company.org</li>
+            <li>Phone: (555) 222-3333</li>
+            <li>Phone: +1-800-222-3333</li>
+        </ul>
+    </div>
+    
+    <div>
+        <h2>Additional Team Members</h2>
+        <ul>
+            <li>Bob Johnson - bob@company.com - 555-222-4444</li>
+            <li>Alice Williams - alice@company.org - (555) 333-5555</li>
+        </ul>
+    </div>
+    
+    <div>
+        <h2>Pagination</h2>
+        <a href="debug-test.html">Previous Page</a> | 
+        <a href="debug-test.html" rel="next">Next Page</a>
+    </div>
+    
+    <script>
+        // Add some dynamic content after a delay to test auto-scrolling
+        setTimeout(() => {
+            const hiddenDiv = document.createElement('div');
+            hiddenDiv.innerHTML = `
+                <h2>More Hidden Content</h2>
+                <ul>
+                    <li>Email: morehidden@example.com</li>
+                    <li>Phone: (777) 666-5555</li>
+                </ul>
+            `;
+            document.body.appendChild(hiddenDiv);
+        }, 2000);
+    </script>
+</body>
+</html>

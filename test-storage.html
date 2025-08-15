@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Storage Test</title>
+</head>
+<body>
+    <h1>Storage Test</h1>
+    <button id="save">Save Data</button>
+    <button id="load">Load Data</button>
+    <button id="clear">Clear Data</button>
+    <div id="output"></div>
+
+    <script>
+        document.getElementById('save').addEventListener('click', function() {
+            const data = {
+                emails: ['test@example.com', 'test2@example.com'],
+                phones: ['123-456-7890', '098-765-4321'],
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('testData', JSON.stringify(data));
+            document.getElementById('output').innerText = 'Data saved!';
+        });
+
+        document.getElementById('load').addEventListener('click', function() {
+            const stored = localStorage.getItem('testData');
+            if (stored) {
+                const data = JSON.parse(stored);
+                document.getElementById('output').innerText = JSON.stringify(data, null, 2);
+            } else {
+                document.getElementById('output').innerText = 'No data found';
+            }
+        });
+
+        document.getElementById('clear').addEventListener('click', function() {
+            localStorage.removeItem('testData');
+            document.getElementById('output').innerText = 'Data cleared!';
+        });
+    </script>
+</body>
+</html>
