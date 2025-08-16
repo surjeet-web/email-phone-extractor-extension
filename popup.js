@@ -3,8 +3,6 @@ let allEmails = [];
 let allPhones = [];
 let isExtracting = false;
 let currentPageUrl = '';
-let extractionTarget = 0; // Number of emails to extract
-let extractionProgress = 0; // Current extraction progress
 
 // DOM Elements
 const elements = {
@@ -23,17 +21,15 @@ const elements = {
   exportAllBtn: document.getElementById('export-all'),
   clearStorageBtn: document.getElementById('clear-storage'),
   progress: document.getElementById('progress'),
-  status: document.getElementById('status'),
-  emailTarget: document.getElementById('email-target'),
-  autoExtractAllBtn: document.getElementById('auto-extract-all')
+  status: document.getElementById('status')
 };
 
 // Function to show status message
 function showStatus(message, isError = false) {
-  console.log('Status message:', message, 'Is error:', isError);
   elements.status.textContent = message;
   elements.status.className = isError ? 'status error' : 'status';
   
+  // Auto-clear status after 3 seconds
   setTimeout(() => {
     elements.status.textContent = '';
     elements.status.className = 'status';
@@ -42,13 +38,11 @@ function showStatus(message, isError = false) {
 
 // Function to update progress bar
 function updateProgress(percentage) {
-  console.log('Updating progress to:', percentage);
   elements.progress.style.width = percentage + '%';
 }
 
 // Function to switch tabs
 function switchTab(tab) {
-  console.log('Switching to tab:', tab);
   if (tab === 'emails') {
     elements.emailTab.classList.add('active');
     elements.phoneTab.classList.remove('active');
@@ -68,179 +62,126 @@ function formatPhoneNumber(phone) {
   return phone.replace(/\s+/g, ' ').trim();
 }
 
-// Function to save data to localStorage
+// Function to save data to chrome storage
 function saveToStorage() {
-  try {
-    const data = {
-      emails: allEmails,
-      phones: allPhones,
-      timestamp: new Date().toISOString(),
-      url: currentPageUrl
-    };
+  const data = {
+    emails: allEmails,
+    phones: allPhones,
+    timestamp: new Date().toISOString(),
+    url: currentPageUrl
+  };
+  
+  // Save current session data
+  chrome.storage.local.set({'currentExtraction': data}, function() {
+    console.log('Data saved to storage');
+  });
+  
+  // Also save to history
+  chrome.storage.local.get(['extractionHistory'], function(result) {
+    let history = result.extractionHistory || [];
     
-    console.log('Saving data to localStorage:', data);
+    // Add current data to history
+    history.push(data);
     
-    // Get existing data
-    let storedData = JSON.parse(localStorage.getItem('extractedData') || '{}');
-    
-    // Add current data
-    if (!storedData[currentPageUrl]) {
-      storedData[currentPageUrl] = [];
+    // Keep only last 100 extractions
+    if (history.length > 100) {
+      history = history.slice(-100);
     }
     
-    // Add new extraction
-    storedData[currentPageUrl].push(data);
-    
-    // Keep only last 10 extractions per URL
-    if (storedData[currentPageUrl].length > 10) {
-      storedData[currentPageUrl] = storedData[currentPageUrl].slice(-10);
-    }
-    
-    // Save to localStorage
-    localStorage.setItem('extractedData', JSON.stringify(storedData));
-    
-    // Also save current session
-    localStorage.setItem('currentExtraction', JSON.stringify(data));
-    
-    console.log('Data saved successfully');
-  } catch (error) {
-    console.error('Error saving to localStorage:', error);
-    showStatus('Error saving data', true);
-  }
+    // Save updated history
+    chrome.storage.local.set({'extractionHistory': history}, function() {
+      console.log('History updated');
+    });
+  });
 }
 
-// Function to load data from localStorage
+// Function to load data from chrome storage
 function loadFromStorage() {
-  try {
-    const stored = localStorage.getItem('currentExtraction');
-    console.log('Loading data from localStorage:', stored);
-    if (stored) {
+  chrome.storage.local.get(['currentExtraction'], function(result) {
+    if (result.currentExtraction) {
       try {
-        const data = JSON.parse(stored);
+        const data = result.currentExtraction;
         allEmails = data.emails || [];
         allPhones = data.phones || [];
         renderData();
-        console.log('Data loaded successfully:', data);
-        return true;
+        console.log('Data loaded from storage');
       } catch (e) {
-        console.error('Error parsing stored data:', e);
-        return false;
+        console.error('Error loading stored data:', e);
       }
     }
-    console.log('No stored data found');
-    return false;
-  } catch (error) {
-    console.error('Error loading from localStorage:', error);
-    return false;
-  }
+  });
 }
 
 // Function to render data in the UI
 function renderData() {
-  try {
-    console.log('Rendering data:', { emails: allEmails.length, phones: allPhones.length });
-    
-    // Update counts
-    elements.emailCount.textContent = allEmails.length;
-    elements.phoneCount.textContent = allPhones.length;
-    
-    // Clear existing lists
-    elements.emailList.innerHTML = '';
-    elements.phoneList.innerHTML = '';
-    
-    // Render emails
-    if (allEmails.length === 0) {
-      const emptyItem = document.createElement('li');
-      emptyItem.textContent = 'No emails found';
-      elements.emailList.appendChild(emptyItem);
-    } else {
-      allEmails.forEach(email => {
-        const li = document.createElement('li');
-        li.textContent = email;
-        li.addEventListener('click', () => {
-          navigator.clipboard.writeText(email);
-          showStatus('Email copied to clipboard!');
-        });
-        elements.emailList.appendChild(li);
+  // Update counts
+  elements.emailCount.textContent = allEmails.length;
+  elements.phoneCount.textContent = allPhones.length;
+  
+  // Clear existing lists
+  elements.emailList.innerHTML = '';
+  elements.phoneList.innerHTML = '';
+  
+  // Render emails
+  if (allEmails.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.textContent = 'No emails found';
+    elements.emailList.appendChild(emptyItem);
+  } else {
+    allEmails.forEach(email => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="email-value">${email}</span>`;
+      li.addEventListener('click', () => {
+        navigator.clipboard.writeText(email);
+        showStatus('Email copied to clipboard!');
       });
-    }
-    
-    // Render phones
-    if (allPhones.length === 0) {
-      const emptyItem = document.createElement('li');
-      emptyItem.textContent = 'No phone numbers found';
-      elements.phoneList.appendChild(emptyItem);
-    } else {
-      allPhones.forEach(phone => {
-        const li = document.createElement('li');
-        li.textContent = formatPhoneNumber(phone);
-        li.addEventListener('click', () => {
-          navigator.clipboard.writeText(phone);
-          showStatus('Phone number copied to clipboard!');
-        });
-        elements.phoneList.appendChild(li);
+      elements.emailList.appendChild(li);
+    });
+  }
+  
+  // Render phones
+  if (allPhones.length === 0) {
+    const emptyItem = document.createElement('li');
+    emptyItem.textContent = 'No phone numbers found';
+    elements.phoneList.appendChild(emptyItem);
+  } else {
+    allPhones.forEach(phone => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="phone-value">${formatPhoneNumber(phone)}</span>`;
+      li.addEventListener('click', () => {
+        navigator.clipboard.writeText(phone);
+        showStatus('Phone number copied to clipboard!');
       });
-    }
-  } catch (error) {
-    console.error('Error rendering data:', error);
-    showStatus('Error displaying data', true);
+      elements.phoneList.appendChild(li);
+    });
   }
 }
 
 // Function to get current tab URL
 function getCurrentTabUrl(callback) {
-  console.log('Getting current tab URL...');
   chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-    if (chrome.runtime.lastError) {
-      console.error('Error getting current tab:', chrome.runtime.lastError);
-      showStatus('Error getting current tab', true);
-      return;
-    }
-    
     if (tabs && tabs[0]) {
       currentPageUrl = tabs[0].url;
-      console.log('Current tab URL:', currentPageUrl);
       callback(tabs[0]);
-    } else {
-      console.error('No active tab found');
-      showStatus('No active tab found', true);
     }
   });
 }
 
 // Function to extract data from the current tab
 function extractData() {
-  console.log('Starting extractData function...');
-  
-  if (isExtracting) {
-    console.log('Already extracting, skipping...');
-    return;
-  }
+  if (isExtracting) return;
   
   isExtracting = true;
   showStatus('Extracting data...');
   
   getCurrentTabUrl(function(tab) {
-    console.log('Sending extractData message to tab:', tab);
-    
-    // Check if we have permission to access the tab
-    if (!tab) {
-      console.error('No tab provided');
-      showStatus('Error: No tab available', true);
-      isExtracting = false;
-      return;
-    }
-    
     chrome.tabs.sendMessage(tab.id, {action: "extractData"}, function(response) {
       isExtracting = false;
       
       if (chrome.runtime.lastError) {
-        console.error('Error sending message:', chrome.runtime.lastError);
-        showStatus('Error communicating with page', true);
+        showStatus('Error: ' + chrome.runtime.lastError.message, true);
         return;
       }
-      
-      console.log('Received response:', response);
       
       if (response) {
         // Merge with existing data to avoid duplicates
@@ -255,7 +196,6 @@ function extractData() {
         showStatus(`Found ${newEmails.length} new emails and ${newPhones.length} new phones`);
       } else {
         showStatus('Failed to extract data', true);
-        console.error('Failed to extract data, no response received');
       }
     });
   });
@@ -263,12 +203,7 @@ function extractData() {
 
 // Function to auto extract data with scrolling
 function autoExtract() {
-  console.log('Starting autoExtract function...');
-  
-  if (isExtracting) {
-    console.log('Already extracting, skipping...');
-    return;
-  }
+  if (isExtracting) return;
   
   isExtracting = true;
   elements.autoExtractBtn.disabled = true;
@@ -284,8 +219,6 @@ function autoExtract() {
   showStatus('Scrolling through page...');
   
   getCurrentTabUrl(function(tab) {
-    console.log('Sending autoExtract message to tab:', tab);
-    
     chrome.tabs.sendMessage(tab.id, {action: "autoExtract"}, function(response) {
       isExtracting = false;
       elements.autoExtractBtn.disabled = false;
@@ -298,13 +231,10 @@ function autoExtract() {
       `;
       
       if (chrome.runtime.lastError) {
-        console.error('Error sending autoExtract message:', chrome.runtime.lastError);
-        showStatus('Error communicating with page', true);
+        showStatus('Error: ' + chrome.runtime.lastError.message, true);
         updateProgress(0);
         return;
       }
-      
-      console.log('Received autoExtract response:', response);
       
       if (response) {
         // Merge with existing data to avoid duplicates
@@ -320,7 +250,6 @@ function autoExtract() {
         updateProgress(100);
       } else {
         showStatus('Failed to extract data', true);
-        console.error('Failed to extract data, no response received');
         updateProgress(0);
       }
     });
@@ -329,12 +258,7 @@ function autoExtract() {
 
 // Function to navigate to next page
 function nextPage() {
-  console.log('Starting nextPage function...');
-  
-  if (isExtracting) {
-    console.log('Already extracting, skipping...');
-    return;
-  }
+  if (isExtracting) return;
   
   isExtracting = true;
   elements.nextPageBtn.disabled = true;
@@ -348,8 +272,6 @@ function nextPage() {
   showStatus('Checking for next page...');
   
   getCurrentTabUrl(function(tab) {
-    console.log('Sending nextPage message to tab:', tab);
-    
     chrome.tabs.sendMessage(tab.id, {action: "nextPage"}, function(response) {
       isExtracting = false;
       elements.nextPageBtn.disabled = false;
@@ -361,12 +283,9 @@ function nextPage() {
       `;
       
       if (chrome.runtime.lastError) {
-        console.error('Error sending nextPage message:', chrome.runtime.lastError);
-        showStatus('Error communicating with page', true);
+        showStatus('Error: ' + chrome.runtime.lastError.message, true);
         return;
       }
-      
-      console.log('Received nextPage response:', response);
       
       if (response && response.hasNext) {
         showStatus('Navigating to next page...');
@@ -377,76 +296,6 @@ function nextPage() {
         }, 3000);
       } else {
         showStatus('No next page found or already on last page');
-      }
-    });
-  });
-}
-
-// Function to auto extract all data across multiple pages
-function autoExtractAll() {
-  console.log('Starting autoExtractAll function...');
-  
-  if (isExtracting) {
-    console.log('Already extracting, skipping...');
-    return;
-  }
-  
-  // Get the target number of emails
-  extractionTarget = parseInt(elements.emailTarget.value) || 100;
-  extractionProgress = 0;
-  
-  isExtracting = true;
-  elements.autoExtractAllBtn.disabled = true;
-  elements.autoExtractAllBtn.innerHTML = `
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 16L12 8M12 8L8 12M12 8L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <path d="M4 19.5C4 18.837 4.26339 18.2011 4.73223 17.7322C5.20107 17.2634 5.83696 17 6.5 17H17.5C18.163 17 18.7989 17.2634 19.2678 17.7322C19.7366 18.2011 20 18.837 20 19.5V19.5C20 20.163 19.7366 20.7989 19.2678 21.2678C18.7989 21.7366 18.163 22 17.5 22H6.5C5.83696 22 5.20107 21.7366 4.73223 21.2678C4.26339 20.7989 4 20.163 4 19.5V19.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-    Extracting... 0/${extractionTarget}
-  `;
-  
-  updateProgress(0);
-  showStatus(`Auto extracting up to ${extractionTarget} emails...`);
-  
-  getCurrentTabUrl(function(tab) {
-    console.log('Sending autoExtractAll message to tab:', tab);
-    
-    chrome.tabs.sendMessage(tab.id, {action: "autoExtractAll"}, function(response) {
-      isExtracting = false;
-      elements.autoExtractAllBtn.disabled = false;
-      elements.autoExtractAllBtn.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M12 16L12 8M12 8L8 12M12 8L16 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M4 19.5C4 18.837 4.26339 18.2011 4.73223 17.7322C5.20107 17.2634 5.83696 17 6.5 17H17.5C18.163 17 18.7989 17.2634 19.2678 17.7322C19.7366 18.2011 20 18.837 20 19.5V19.5C20 20.163 19.7366 20.7989 19.2678 21.2678C18.7989 21.7366 18.163 22 17.5 22H6.5C5.83696 22 5.20107 21.7366 4.73223 21.2678C4.26339 20.7989 4 20.163 4 19.5V19.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        Auto Extract All
-      `;
-      
-      if (chrome.runtime.lastError) {
-        console.error('Error sending autoExtractAll message:', chrome.runtime.lastError);
-        showStatus('Error communicating with page', true);
-        updateProgress(0);
-        return;
-      }
-      
-      console.log('Received autoExtractAll response:', response);
-      
-      if (response) {
-        // Merge with existing data to avoid duplicates
-        const newEmails = response.emails.filter(email => !allEmails.includes(email));
-        const newPhones = response.phones.filter(phone => !allPhones.includes(phone));
-        
-        allEmails = [...allEmails, ...newEmails];
-        allPhones = [...allPhones, ...newPhones];
-        
-        renderData();
-        saveToStorage();
-        showStatus(`Found ${newEmails.length} new emails and ${newPhones.length} new phones from ${response.urls ? response.urls.length : 0} pages`);
-        updateProgress(100);
-      } else {
-        showStatus('Failed to extract data', true);
-        console.error('Failed to extract data, no response received');
-        updateProgress(0);
       }
     });
   });
@@ -524,28 +373,21 @@ function exportAll() {
 
 // Function to clear stored data
 function clearStorage() {
-  try {
-    localStorage.removeItem('extractedData');
-    localStorage.removeItem('currentExtraction');
+  chrome.storage.local.remove(['currentExtraction', 'extractionHistory'], function() {
     allEmails = [];
     allPhones = [];
     renderData();
     showStatus('Stored data cleared');
-  } catch (error) {
-    console.error('Error clearing storage:', error);
-    showStatus('Error clearing data', true);
-  }
+  });
 }
 
 // Add event listeners when the DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
-  console.log('DOM loaded, initializing extension...');
-  
   // Try to load data from storage first
-  if (!loadFromStorage()) {
-    // If no stored data, extract data from current tab
-    extractData();
-  }
+  loadFromStorage();
+  
+  // Extract data from current tab after a short delay
+  setTimeout(extractData, 500);
   
   // Tab switching
   elements.emailTab.addEventListener('click', () => switchTab('emails'));
@@ -558,10 +400,7 @@ document.addEventListener('DOMContentLoaded', function() {
   elements.exportPhonesBtn.addEventListener('click', () => exportData(allPhones, 'phones.csv'));
   elements.exportAllBtn.addEventListener('click', exportAll);
   elements.clearStorageBtn.addEventListener('click', clearStorage);
-  elements.autoExtractAllBtn.addEventListener('click', autoExtractAll);
   
   // Initialize UI
   renderData();
-  
-  console.log('Extension initialized');
-});
+}
