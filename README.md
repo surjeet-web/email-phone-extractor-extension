@@ -2,6 +2,8 @@
 
 A powerful Chrome extension that extracts email addresses and phone numbers from any webpage with advanced features including auto-scrolling, pagination support, local storage, and one-click export.
 
+**Note: This repository also includes a Python-based bot version (Lead Hunter Pro) for large-scale automated extraction. See the Python Bot section below.**
+
 ## Features
 
 - **Advanced Extraction**: Finds emails and phone numbers with improved accuracy
@@ -55,7 +57,7 @@ A powerful Chrome extension that extracts email addresses and phone numbers from
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/email-phone-extractor-extension.git
+   git clone https://github.com/surjeet-web/email-phone-extractor-extension.git
    cd email-phone-extractor-extension
    ```
 
@@ -98,6 +100,62 @@ You can customize this extension by:
 3. Adding more pagination selectors
 4. Customizing the auto-scroll behavior
 5. Adjusting the target email count for the Auto Extract All feature
+
+## Python Bot Version (Lead Hunter Pro)
+
+For large-scale automated extraction, we've also included a Python-based bot that can:
+
+- Automatically browse websites in bulk
+- Extract emails and phone numbers at scale
+- Perform Google/Bing searches automatically
+- Export results in CSV, JSON, and TXT formats
+- Run without manual intervention
+
+### Python Bot Features
+
+- **Automated Browsing**: Go to websites in bulk (following search templates or a given list)
+- **Email Extraction**: Including Gmail, company emails, and generic contact emails
+- **Phone Number Extraction**: From page text
+- **URL Capture**: Store which page each lead was found on
+- **Export in Multiple Formats**: CSV, JSON, and TXT
+
+### Setting Up the Python Bot
+
+1. Install Python 3.7 or higher
+2. Install the required dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Install Playwright browsers:
+   ```bash
+   playwright install
+   ```
+
+### Running the Python Bot
+
+```bash
+# Run with a list of URLs
+python lead_hunter_pro.py --urls "https://example.com" "https://httpbin.org/html"
+
+# Run with URLs from a file
+python lead_hunter_pro.py --file example_urls.txt
+
+# Run with search queries
+python lead_hunter_pro.py --searches "software companies in New York" "marketing agencies London"
+
+# See all options
+python lead_hunter_pro.py --help
+```
+
+### Python Bot Files
+
+- `lead_hunter_pro.py` - Main bot script
+- `requirements.txt` - Python dependencies
+- `example_urls.txt` - Example URLs file
+- `PYTHON_BOT_README.md` - Detailed documentation for the Python bot
+- `setup_bot.py` - Setup script for easy installation
+- `run_bot.bat` - Windows batch file for easy execution
+- `test_bot.py` - Test suite for the bot
 
 ## Testing
 
